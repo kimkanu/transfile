@@ -82,6 +82,9 @@ export class CommMgr {
         this.peerConn = this.globalState.value.peer.connect(clientId, {
           reliable: true,
         });
+        this.peerConn.on("open", () => {
+          this.peerConn.send(false);
+        });
         this.peerConn.on("data", ({ blob, fileName }) => {
           saveAs(new Blob([blob]), fileName);
           this.peerConn.send(true);
@@ -135,9 +138,17 @@ export class CommMgr {
           fileName: this.$fileInput.files[0].name,
         });
       });
-      conn.on("data", () => {
-        this.globalState.update({ status: null });
-        this.$fileInput.files = [];
+      conn.on("data", completed => {
+        if (completed) {
+          this.globalState.update({ status: null });
+          this.$fileInput.value = "";
+        } else {
+          this.globalState.update({
+            status: {
+              type: "sending",
+            },
+          });
+        }
       });
     });
   }

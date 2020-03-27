@@ -18,5 +18,5 @@ peer.on("error", () => {
 });
 
 window.addEventListener("beforeunload", () => {
-  peer._socket._socket.close();
+  peer?._socket?._socket?.close();
 });
