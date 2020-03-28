@@ -3,20 +3,33 @@ import { state } from "./state/index.js";
 
 const app = new App(document.getElementById("app"), state);
 
-const peer = new Peer();
+let peer = new Peer();
+let peerIntervalTimeGap = 200;
+setInterval(() => {
+  if (peer._disconnected || peer._destroyed) {
+    peer = new Peer();
+    addEventsToPeer(peer);
+  }
+}, peerIntervalTimeGap);
 
-peer.on("open", id => {
-  state.update({ id, peer });
-});
+addEventsToPeer(peer);
 
-peer.on("close", () => {
-  state.update({ id: null, peer: null });
-});
+function addEventsToPeer(p) {
+  p.on("open", id => {
+    console.log("IDDDIDIDI", id);
+    state.update({ id, peer });
+    peerIntervalTimeGap = 1000;
+  });
 
-peer.on("error", () => {
-  state.update({ id: null, peer: null });
-});
+  p.on("close", () => {
+    state.update({ id: null, peer: null });
+  });
 
-window.addEventListener("beforeunload", () => {
-  peer?._socket?._socket?.close();
-});
+  p.on("error", () => {
+    state.update({ id: null, peer: null });
+  });
+
+  window.addEventListener("beforeunload", () => {
+    p?._socket?._socket?.close();
+  });
+}
