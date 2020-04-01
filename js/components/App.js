@@ -1,4 +1,5 @@
-import { CommMgr } from "./CommMgr.js";
+import { CommunicationWrapper } from "./CommunicationWrapper.js";
+import { ConnectionWrapper } from "./ConnectionWrapper.js";
 
 export class App {
   constructor($target, globalState) {
@@ -10,17 +11,24 @@ export class App {
 
   renderInit() {
     // create DOM objects
-    this.$app = document.createElement("div");
-    this.$showId = document.createElement("div");
-    this.$commMgr = document.createElement("div");
-    this.commMgr = new CommMgr(this.$commMgr, this.globalState);
+    this.$connectionWrapper = document.createElement("div");
+    this.$target.appendChild(this.$connectionWrapper);
+    this.connectionWrapper = new ConnectionWrapper(
+      this.$connectionWrapper,
+      this.globalState,
+    );
+
+    this.$communicationWrapper = document.createElement("div");
+    this.$communicationWrapper.classList.add("communication-wrapper");
+    this.communicationWrapper = new CommunicationWrapper(
+      this.$communicationWrapper,
+      this.globalState,
+    );
 
     // on global state update
     this.globalState.onUpdate(this.onGlobalStateUpdate.bind(this));
 
-    this.$target.appendChild(this.$app);
-    this.$app.appendChild(this.$showId);
-    this.$app.appendChild(this.$commMgr);
+    this.$target.appendChild(this.$communicationWrapper);
 
     // call render function
     this.render();
@@ -30,9 +38,5 @@ export class App {
     this.render();
   }
 
-  render() {
-    const s = this.globalState.value;
-
-    this.$showId.innerHTML = `ID: ${s.id ?? "fetching..."}`;
-  }
+  render() {}
 }

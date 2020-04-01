@@ -1,3 +1,6 @@
+import { isWaiting } from "../state/communication.js";
+import { isConnected } from "../state/connection.js";
+
 const MILLISECS_IN_SEC = 1000;
 
 export class Waiting {
@@ -11,6 +14,8 @@ export class Waiting {
   renderInit() {
     // create DOM objects
     this.$status = document.createElement("div");
+    this.$status.innerText = "Waiting for receiver...";
+
     this.$code = document.createElement("div");
     this.$timer = document.createElement("div");
 
@@ -35,31 +40,47 @@ export class Waiting {
 
   render() {
     const s = this.globalState.value;
-    const p = this.globalState.prevValue ?? s;
+    const p = this.globalState.prevValue;
 
-    if (s.status === null) {
+    if (!isConnected(s.connection)) {
+      this.$status.innerText = "Waiting for the server connection...";
+      this.$code.innerText = "";
+      this.$timer.innerText = "";
+      return;
+    }
+
+    if (!isWaiting(s.communication)) {
       this.cancelTimeout();
       return;
     }
 
     // manipulate DOM objects and states
+    if (s.communication.code && !this.codeFlag) {
+      this.$code.innerText = `${s.communication.code}`;
+      this.codeFlag = true;
+    } else if (!s.communication.code) {
+      this.$code.innerText = "loading...";
+    }
+
     const dateNow = Date.now();
-
-    this.$status.innerText = "Waiting...";
-    this.$code.innerText = `Code: ${s.status.code ?? "..."}`;
-    this.$timer.innerText = `Expires in: ${
-      s.status.expireAt
-        ? Math.ceil((s.status.expireAt - dateNow) / MILLISECS_IN_SEC)
-        : "..."
-    } seconds`;
-
-    if (s.status.expireAt !== null) {
-      if (s.status.expireAt <= dateNow) {
-        this.globalState.update({ status: null });
+    if (s.communication.expireAt !== null) {
+      if (s.communication.expireAt <= dateNow) {
+        this.globalState.update({
+          communication: {
+            type: "nothing",
+          },
+        });
         return;
       }
+
+      const remainingTimeInSecond =
+        Math.ceil(
+          (s.communication.expireAt - Date.now() - 100) / MILLISECS_IN_SEC,
+        ) - 1;
+      this.$timer.innerText = remainingTimeInSecond;
       const untilNearestTick =
-        (s.status.expireAt - Date.now()) % MILLISECS_IN_SEC || MILLISECS_IN_SEC;
+        (s.communication.expireAt - Date.now()) % MILLISECS_IN_SEC ||
+        MILLISECS_IN_SEC;
       this.timeout = setTimeout(() => {
         this.render();
       }, untilNearestTick);

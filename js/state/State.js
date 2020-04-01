@@ -11,16 +11,18 @@ export class State {
     } else {
       this.updateByModifier(payload);
     }
+    console.log("State updated!");
+    console.log(this.prevValue, "->", this.value);
   }
 
   updateByValue(newValue) {
-    const oldValue = this.prevValue = this.value;
+    const oldValue = (this.prevValue = this.value);
     this.value = {
       ...oldValue,
       ...newValue,
     };
     this.eventTarget.dispatchEvent(
-      new CustomEvent("update", { detail: [newValue, oldValue] }),
+      new CustomEvent("update", { detail: [this.value, oldValue] }),
     );
   }
 

@@ -1,7 +1,9 @@
 import { clearNode } from "../utils/dom.js";
 import { Waiting } from "./Waiting.js";
+import { isConnected } from "../state/connection.js";
+import { isNothing, isWaiting } from "../state/communication.js";
 
-export class CommMgr {
+export class CommunicationWrapper {
   constructor($target, globalState, props = {}) {
     this.$target = $target;
     this.globalState = globalState;
@@ -16,6 +18,9 @@ export class CommMgr {
 
     this.$fileInput = document.createElement("input");
     this.$fileInput.setAttribute("type", "file");
+    this.$fileInput.addEventListener("change", () => {
+      this.render();
+    });
 
     this.$submitSend = document.createElement("input");
     this.$submitSend.setAttribute("type", "button");
@@ -43,19 +48,12 @@ export class CommMgr {
 
   onGlobalStateUpdate(newValue, oldValue) {
     this.render();
-
-    if (oldValue.peer === null && newValue.peer !== null) {
-      this.globalState.value.peer.on("connection", conn => {
-        conn.on("data", data => {
-          console.log(data);
-        });
-      });
-    }
   }
 
   receiveClickHandler(e) {
+    const code = parseInt(this.$codeInput.value, 10);
     const queryParams = {
-      code: this.$codeInput.value,
+      code,
     };
     const url = new URL(
       "https://us-central1-transfile-c3410.cloudfunctions.net/receiveRequest",
@@ -63,9 +61,9 @@ export class CommMgr {
     url.search = new URLSearchParams(queryParams).toString();
 
     this.globalState.update({
-      status: {
-        type: "receiving",
-        clientId: null,
+      communication: {
+        type: "requesting",
+        code,
       },
     });
 
@@ -73,13 +71,13 @@ export class CommMgr {
       .then(res => res.json())
       .then(({ clientId }) => {
         this.globalState.update({
-          status: {
+          communication: {
             type: "receiving",
             clientId,
           },
         });
 
-        this.peerConn = this.globalState.value.peer.connect(clientId, {
+        this.peerConn = this.globalState.value.connection.peer.connect(clientId, {
           reliable: true,
         });
         this.peerConn.on("open", () => {
@@ -88,8 +86,21 @@ export class CommMgr {
         this.peerConn.on("data", ({ blob, fileName }) => {
           saveAs(new Blob([blob]), fileName);
           this.peerConn.send(true);
-          this.globalState.update({ status: null });
+          this.globalState.update({
+            communication: {
+              type: "nothing",
+            },
+          });
           this.peerConn = null;
+        });
+      })
+      .catch(e => {
+        // TODO: notice to user
+        console.error(e);
+        this.globalState.update({
+          communication: {
+            type: "nothing",
+          },
         });
       });
   }
@@ -97,13 +108,13 @@ export class CommMgr {
   submitSendClickHandler(e) {
     const s = this.globalState.value;
 
-    if (!s.id) {
+    if (!isConnected(s.connection)) {
       // TODO: inform the user for not having proper id
       return;
     }
 
     this.globalState.update({
-      status: {
+      communication: {
         type: "waiting",
         code: null,
         expireAt: null,
@@ -111,7 +122,7 @@ export class CommMgr {
     });
 
     const queryParams = {
-      clientId: s.id,
+      clientId: s.connection.id,
     };
     const url = new URL(
       "https://us-central1-transfile-c3410.cloudfunctions.net/sendRequest",
@@ -122,15 +133,24 @@ export class CommMgr {
       .then(res => res.json())
       .then(({ code, expireAt }) => {
         this.globalState.update({
-          status: {
+          communication: {
             type: "waiting",
             code,
             expireAt,
           },
         });
+      })
+      .catch(e => {
+        // TODO: notice to user
+        console.error(e);
+        this.globalState.update({
+          communication: {
+            type: "nothing",
+          },
+        });
       });
 
-    const peer = this.globalState.value.peer;
+    const peer = this.globalState.value.connection.peer;
     peer.on("connection", conn => {
       conn.on("open", () => {
         conn.send({
@@ -140,12 +160,17 @@ export class CommMgr {
       });
       conn.on("data", completed => {
         if (completed) {
-          this.globalState.update({ status: null });
+          this.globalState.update({
+            communication: {
+              type: "nothing",
+            },
+          });
           this.$fileInput.value = "";
         } else {
           this.globalState.update({
-            status: {
+            communication: {
               type: "sending",
+              code: s.communication.code,
             },
           });
         }
@@ -158,21 +183,25 @@ export class CommMgr {
     const p = this.globalState.prevValue ?? s;
 
     this.$submitSend.removeEventListener("click", this._submitSendClickHandler);
-    this.$submitSend.disabled = s.id === null || s.status !== null;
+    this.$submitSend.disabled =
+      !isConnected(s.connection) ||
+      !isNothing(s.communication) ||
+      this.$fileInput.files.length === 0;
     this._submitSendClickHandler = this.submitSendClickHandler.bind(this);
     this.$submitSend.addEventListener("click", this._submitSendClickHandler);
 
     this.$receive.removeEventListener("click", this._receiveClickHandler);
-    this.$receive.disabled = s.id === null || s.status !== null;
+    this.$receive.disabled =
+      !isConnected(s.connection) || !isNothing(s.communication);
     this._receiveClickHandler = this.receiveClickHandler.bind(this);
     this.$receive.addEventListener("click", this._receiveClickHandler);
 
-    if (p.status?.type === "waiting" && s.status?.type !== "waiting") {
+    if (isWaiting(p.communication) && !isWaiting(s.communication)) {
       this.waiting = null;
     }
 
-    switch (s.status?.type) {
-      case undefined: {
+    switch (s.communication.type) {
+      case "nothing": {
         clearNode(this.$commStatus);
 
         const textNode = document.createElement("span");
@@ -182,7 +211,7 @@ export class CommMgr {
       }
 
       case "waiting": {
-        if (p.status?.type !== "waiting") {
+        if (!isWaiting(p.communication)) {
           clearNode(this.$commStatus);
           this.waiting = new Waiting(this.$commStatus, this.globalState);
         }
@@ -190,7 +219,7 @@ export class CommMgr {
       }
 
       default:
-        this.$commStatus.innerHTML = s.status.type;
+        this.$commStatus.innerHTML = s.communication.type;
     }
   }
 }

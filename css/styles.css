@@ -1,0 +1,122 @@
+@import url("https://fonts.googleapis.com/css?family=Open+Sans:400,600,800&display=swap");
+
+:root {
+  --grayed-text-color: #7b7a80;
+}
+
+html,
+body {
+  margin: 0;
+  font-family: "Open Sans", sans-serif;
+  height: 100%;
+}
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0px 24px;
+}
+
+@media screen and (max-width: 880px) and (orientation: portrait) {
+  #app {
+    max-width: 540px;
+    max-height: 800px;
+  }
+
+  .communication-wrapper {
+    position: relative;
+    height: calc(100% - 72px);
+    margin-top: 8px;
+  }
+
+  .card {
+    position: absolute;
+    width: 100%;
+    height: calc(50% - 12px);
+    transition: height 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(1);
+  }
+  .card.hoverable:hover {
+    transform: scale(1.06);
+    cursor: pointer;
+  }
+  .card > div {
+    box-sizing: border-box;
+    height: 100%;
+    padding: 16px;
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.21);
+  }
+  .card.disabled {
+    cursor: not-allowed !important;
+    transform: scale(1) !important;
+  }
+  .card.disabled input {
+    cursor: not-allowed !important;
+    pointer-events: none;
+  }
+
+  .file-sender {
+    top: 0%;
+    z-index: 1;
+  }
+  .file-sender > div {
+    background-image: linear-gradient(
+      135deg,
+      #f78ca0 0%,
+      #f9748f 19%,
+      #fd868c 60%,
+      #fe9a8b 100%
+    );
+  }
+  .file-sender.extended {
+    height: 100%;
+  }
+
+  .file-receiver {
+    bottom: 0px;
+    z-index: 0;
+  }
+  .file-receiver > div {
+    background-image: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+  }
+
+  .card-title {
+    color: white;
+    font-size: 28px;
+    line-height: 90%;
+    font-weight: 800;
+    text-shadow: 0px 3px 6px rgba(0, 0, 0, 0.42);
+  }
+}
+
+.noticer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 42px;
+}
+.noticer span:first-child {
+  font-size: 14px;
+  text-transform: uppercase;
+  color: var(--grayed-text-color);
+  font-weight: 600;
+}
+.noticer.trying {
+}
+.noticer.trying span:first-child {
+}
+.noticer.connected {
+}
+.noticer.connected span:first-child {
+  color: #368af3;
+}
