@@ -1,5 +1,5 @@
 # Transfile
-A neat clone of SendAnywhere using PeerJS and Firebase Realtime Database, in Vanilla JS
+A neat copycat of SendAnywhere using PeerJS and Firebase Realtime Database, in Vanilla JS
 
 ## Features
 
