@@ -4,7 +4,7 @@ A neat copycat of SendAnywhere using PeerJS and Firebase Realtime Database, in V
 ## Features
 
 - [x] Send and receive files between two clients
-- [ ] Drag and drop
+- [x] Drag and drop
 - [ ] Nice design
 - [ ] TypeScript
 
